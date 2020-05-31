@@ -1,32 +1,74 @@
 module Main exposing (..)
 
-import Html exposing (Html, div, td, text, tr)
+import Browser
+import Html exposing (Html, button, div, td, text, tr)
+import Html.Events exposing (onClick)
 import List exposing (concatMap, filter, length, map, range)
+import Random exposing (Generator)
 type alias Point = { x: Int, y: Int}
 type State = Alive | Dead
 type alias Cell = { state: State, point: Point }
 type alias Neighbours = List Cell
 type alias Game = List (List Cell)
+type Msg = Tick | ToggleCellState Cell
 
-main = renderGame createGame
+init : Game
+init =  createGamePartial
 
-renderGame: Game -> Html msg
+update: Msg -> Game -> Game
+update msg model =
+    case msg of
+        Tick -> getNewGeneration model
+        ToggleCellState cell -> toggleCellState cell model
+
+
+view: Game -> Html Msg
+view model = div [] [button [onClick Tick] [text "Tick"], renderGame model]
+
+main = Browser.sandbox { init= init, view= view, update= update }
+
+renderGame: Game -> Html Msg
 renderGame game = div [] (map renderRow game)
 
-renderRow: List Cell -> Html msg
+renderRow: List Cell -> Html Msg
 renderRow cells = tr [] (map renderCell cells)
 
-renderCell: Cell -> Html msg
+renderCell: Cell -> Html Msg
 renderCell cell =
     case cell.state of
-        Alive -> td [] [text "X"]
-        Dead -> td [] [text "O"]
+        Dead -> td [] [button [onClick (ToggleCellState cell)] [text "O"]]
+        Alive -> td [] [button [onClick (ToggleCellState cell)] [text "X"]]
 
-createGame: Game
-createGame = map (\x -> map (\y -> createCell x y) (range 0 10) ) (range 0 10)
+toggleCellState: Cell -> Game -> Game
+toggleCellState cell game =
+    map (\rows ->
+        map (\c ->
+            if (cell.point.x == c.point.x && cell.point.y == c.point.y) then
+                toggle cell
+            else
+                c
+        ) rows
+    ) game
+    
+toggle: Cell -> Cell
+toggle {state, point} = {
+    state= (
+        case state of
+            Alive -> Dead
+            Dead -> Alive
+           )
+    ,point= point
+    }
 
-createCell: Int -> Int -> Cell
-createCell x y = {state = Alive, point= { x=x, y=y}}
+
+createGamePartial: Game
+createGamePartial = map (\row -> map (\coords -> createCell coords Dead) row) (createCoordinates 10)
+
+createCoordinates: Int -> List (List (Int, Int))
+createCoordinates n = map (\x -> map (\y -> Tuple.pair x y)  (range 0 n)) (range 0 n)
+
+createCell: (Int, Int) -> State -> Cell
+createCell (x ,y) state = {state = state, point= { x=x, y=y}}
 
 getNewGeneration: Game -> Game
 getNewGeneration game = map (\row -> getNewGenerationList game row) game
@@ -38,15 +80,21 @@ getNewCellState: Cell -> Neighbours -> Cell
 getNewCellState cell neighbours =
     case cell.state of
         Dead ->
-            if(List.length neighbours == 3) then
-                cell
-            else
+            if(aliveNeighbours neighbours == 3) then
                 { state= Alive, point= cell.point}
+            else
+                cell
         Alive ->
-            if(List.length neighbours == 1 || length neighbours > 3) then
+            if(aliveNeighbours neighbours <= 1 || aliveNeighbours neighbours > 3) then
                 { state = Dead, point = cell.point}
             else
                 cell
+
+aliveNeighbours: List Cell -> Int
+aliveNeighbours cells = length (filter identity (map isAlive cells))
+
+isAlive: Cell -> Bool
+isAlive cell = cell.state == Alive
 
 getNeighbours: Cell -> Game -> Neighbours
 getNeighbours cell allCells = filter (\c -> isNeighbour cell.point c.point) (concatMap identity allCells)
