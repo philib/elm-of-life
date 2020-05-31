@@ -1,7 +1,8 @@
 module Main exposing (..)
 
 import Browser
-import Html exposing (Html, button, div, td, text, tr)
+import Html exposing (Html, button, div, table, td, text, tr)
+import Html.Attributes exposing (style)
 import Html.Events exposing (onClick)
 import List exposing (concatMap, filter, length, map, range)
 import Random exposing (Generator)
@@ -28,16 +29,16 @@ view model = div [] [button [onClick Tick] [text "Tick"], renderGame model]
 main = Browser.sandbox { init= init, view= view, update= update }
 
 renderGame: Game -> Html Msg
-renderGame game = div [] (map renderRow game)
+renderGame game = table [style "border" "solid"] (map renderRow game)
 
 renderRow: List Cell -> Html Msg
-renderRow cells = tr [] (map renderCell cells)
+renderRow cells = tr [style "border" "solid"] (map renderCell cells)
 
 renderCell: Cell -> Html Msg
 renderCell cell =
     case cell.state of
-        Dead -> td [] [button [onClick (ToggleCellState cell)] [text "O"]]
-        Alive -> td [] [button [onClick (ToggleCellState cell)] [text "X"]]
+        Dead -> td [onClick (ToggleCellState cell)] [div [style "height" "10px", style "width" "10px", style "background-color" "grey"] []]
+        Alive -> td [onClick (ToggleCellState cell)] [div [style "height" "10px", style "width" "10px", style "background-color" "black"] []]
 
 toggleCellState: Cell -> Game -> Game
 toggleCellState cell game =
@@ -49,7 +50,7 @@ toggleCellState cell game =
                 c
         ) rows
     ) game
-    
+
 toggle: Cell -> Cell
 toggle {state, point} = {
     state= (
@@ -62,7 +63,7 @@ toggle {state, point} = {
 
 
 createGamePartial: Game
-createGamePartial = map (\row -> map (\coords -> createCell coords Dead) row) (createCoordinates 10)
+createGamePartial = map (\row -> map (\coords -> createCell coords Dead) row) (createCoordinates 50)
 
 createCoordinates: Int -> List (List (Int, Int))
 createCoordinates n = map (\x -> map (\y -> Tuple.pair x y)  (range 0 n)) (range 0 n)
