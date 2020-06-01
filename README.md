@@ -1,4 +1,4 @@
-#Elm of Life
+# Elm of Life
 
 Game of Life written in Elm.
 
