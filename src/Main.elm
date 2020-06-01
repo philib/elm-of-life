@@ -2,7 +2,7 @@ module Main exposing (..)
 
 import Browser
 import Dict exposing (Dict)
-import Html exposing (Html, button, div, table, td, text, tr)
+import Html exposing (Html, button, div, h1, p, table, td, text, tr)
 import Html.Attributes exposing (style)
 import Html.Events exposing (onClick)
 import List exposing (concatMap, filter, length, map, range)
@@ -16,7 +16,7 @@ type Cell = Cell State Point
 type alias AliveNeighboursCount = Int
 type alias Game = Dict Point State
 type alias Model = {paused: Bool, game:Game}
-type Msg = ManualTick | Start | TimedTick Time.Posix | ToggleCellState Point
+type Msg = ManualTick | Start | TimedTick Time.Posix | ToggleCellState Point | Reset
 type alias Color = String
 
 init : () -> (Model, Cmd Msg)
@@ -29,9 +29,27 @@ update msg {paused, game} =
         Start -> ({paused=if(paused) then False else True, game= game}, Cmd.none)
         TimedTick _ -> ({paused=paused, game= getNextGeneration game}, Cmd.none)
         ToggleCellState point -> ({paused=paused, game= toggleCellState point game}, Cmd.none)
+        Reset -> ({paused=True, game= initialGame}, Cmd.none)
 
 view: Model -> Html Msg
-view model = div [] [button [onClick ManualTick] [text "Step"],  button [onClick Start] [text "Start/Pause"], (renderGame model.game)]
+view model =
+    div []
+        [ h1 [] [text "Game of Life"]
+        , div []
+            [text "Play God by killing or bringing cells back to life. Just click in the grid. Grey cells are dead, black cells are alive."
+            , p []
+                [text "Use the button to perform a single step or to start/stop the game of live."]
+            ]
+        , div []
+            [p []
+                [button [onClick Start] [text "Start/Pause"]
+                , button [onClick ManualTick] [text "Step"]
+                , button [onClick Reset] [text "Reset"]
+                ]
+            ]
+        , div []
+            [renderGame model.game]
+        ]
 
 subscriptions: Model -> Sub Msg
 subscriptions {paused} = if(paused) then Sub.none else Time.every 400 TimedTick
@@ -39,13 +57,17 @@ subscriptions {paused} = if(paused) then Sub.none else Time.every 400 TimedTick
 main = Browser.element { init= init, view= view, update= update, subscriptions= subscriptions}
 
 renderGame: Game -> Html Msg
-renderGame game = statesToTable (gameToList game)
+renderGame game = renderTable (transformToRows game)
 
-gameToList: Game -> List (List Cell)
-gameToList game = map (\e->  map (\(_, cell)-> cell ) (Tuple.second e))(List.Extra.groupWhile (\(rowA, _) (rowB, _  ) -> rowA == rowB) (map (\(point, state)-> (Tuple.first point, Cell state point))(Dict.toList game)))
+transformToRows: Game -> List (List Cell)
+transformToRows game = map (\e->  map (\(_, cell)-> cell ) (Tuple.second e))(List.Extra.groupWhile (\(rowA, _) (rowB, _  ) -> rowA == rowB) (map (\(point, state)-> (Tuple.first point, Cell state point))(Dict.toList game)))
 
-statesToTable: List (List Cell) -> Html Msg
-statesToTable cells = table [style "border" "1px solid black"] (map renderRow cells)
+renderTable: List (List Cell) -> Html Msg
+renderTable cells =
+    table
+        [style "border" "1px solid black"
+        , style "border-collapse" "collapse"
+        ] (map renderRow cells)
 
 renderRow: List Cell -> Html Msg
 renderRow cells = tr [style "border" "1px solid black"] (map renderCell cells)
@@ -59,14 +81,13 @@ renderCell (Cell state point) =
 
 renderRowCell: Point -> Color -> Html Msg
 renderRowCell point color =
-    td [onClick (ToggleCellState point)]
-        [div
-            [style "height" "10px"
-            , style "width" "10px"
-            , style "border" "1px solid black"
-            , style "background-color" color
-            ] []
-            ]
+    td [onClick (ToggleCellState point)
+        , style "height" "10px"
+        , style "width" "10px"
+        , style "border" "1px solid black"
+        , style "border-collapse" "collapse"
+        , style "background-color" color
+        ] []
 
 toggleCellState: Point -> Game -> Game
 toggleCellState point game =
@@ -79,10 +100,10 @@ toggle state =
             Dead -> Just Alive
 
 initialGame: Game
-initialGame = Dict.fromList (map (\x-> (x, Dead)) (createCoordinates 50))
+initialGame = Dict.fromList (map (\x-> (x, Dead)) (createCoordinates 150 55))
 
-createCoordinates: Int -> List Point
-createCoordinates n = concatMap (\x -> map (\y -> (x,y)) (range 0 n)) (range 0 n)
+createCoordinates: Int -> Int -> List Point
+createCoordinates n m = concatMap (\x -> map (\y -> (x,y)) (range 0 n)) (range 0 m)
 
 getNextGeneration: Game -> Game
 getNextGeneration game = Dict.map (\point state -> getNewCellState state (getNeighboursCount point game)) game
