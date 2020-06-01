@@ -1,42 +1,47 @@
 module Main exposing (..)
 
 import Browser
+import Delay exposing (..)
 import Dict exposing (Dict)
-import Dict.Extra exposing (groupBy)
 import Html exposing (Html, button, div, table, td, text, tr)
 import Html.Attributes exposing (style)
 import Html.Events exposing (onClick)
 import List exposing (concatMap, filter, length, map, range)
 import List.Extra
+import Time
 import Tuple
 type alias Point = (Int, Int)
 type State =  Alive | Dead
 type Cell = Cell State Point
 type alias AliveNeighbours = Int
 type alias Game = Dict Point State
-type Msg = Tick | ToggleCellState Point
+type alias Model = {paused: Bool, game:Game}
+type Msg = ManualTick | Start | TimedTick Time.Posix | ToggleCellState Point
 
-init : Game
-init =  createGamePartial
+init : () -> (Model, Cmd Msg)
+init _ =  ({paused = True, game = createGamePartial}, Cmd.none)
 
-update: Msg -> Game -> Game
-update msg model =
+update: Msg -> Model -> (Model, Cmd Msg)
+update msg {paused, game} =
     case msg of
-        Tick -> getNewGeneration model
-        ToggleCellState point -> toggleCellState point model
+        ManualTick -> ({paused=True, game= getNewGeneration game}, Cmd.none)
+        Start -> ({paused=if(paused) then False else True, game= game}, Cmd.none)
+        TimedTick _ -> ({paused=paused, game= getNewGeneration game}, Cmd.none)
+        ToggleCellState point -> ({paused=paused, game= toggleCellState point game}, Cmd.none)
 
+view: Model -> Html Msg
+view model = div [] [button [onClick ManualTick] [text "Step"],  button [onClick Start] [text "Start/Pause"], (renderGame model.game)]
 
-view: Game -> Html Msg
-view model = div [] [button [onClick Tick] [text "Tick"], renderGame model]
+subscriptions: Model -> Sub Msg
+subscriptions {paused} = if(paused) then Sub.none else Time.every 400 TimedTick
 
-main = Browser.sandbox { init= init, view= view, update= update }
+main = Browser.element { init= init, view= view, update= update, subscriptions= subscriptions}
 
 renderGame: Game -> Html Msg
 renderGame game = statesToTable (gameToList game)
 
 gameToList: Game -> List (List Cell)
 gameToList game = map (\e->  map (\(_, cell)-> cell ) (Tuple.second e))(List.Extra.groupWhile (\(rowA, _) (rowB, _  ) -> rowA == rowB) (map (\(point, state)-> (getX point, Cell state point))(Dict.toList game)))
-
 
 statesToTable: List (List Cell) -> Html Msg
 statesToTable cells = table [style "border" "solid"] (map renderRow cells)
