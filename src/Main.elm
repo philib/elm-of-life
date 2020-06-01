@@ -86,7 +86,7 @@ view model =
     div []
         [ h1 [] [ text "Game of Life" ]
         , div []
-            [ text "Play God by killing or bringing cells back to life. Just click in the grid. Grey cells are dead, black cells are alive."
+            [ text "Play god by killing or bringing cells back to life. Just click in the grid. Grey cells are dead, black cells are alive."
             , p []
                 [ text "Use the button to perform a single step or to start/stop the game of live." ]
             ]
@@ -213,7 +213,7 @@ getNewCellState cell neighbours =
 
 getNeighboursCount : Point -> Game -> AliveNeighboursCount
 getNeighboursCount point game =
-    List.length (filter (\state -> state == Alive) (List.filterMap identity (map (\p -> Dict.get p game) (potentialNeighbours point))))
+    length (filter (\state -> state == Alive) (List.filterMap identity (map (\p -> Dict.get p game) (potentialNeighbours point))))
 
 
 potentialNeighbours : Point -> List Point
